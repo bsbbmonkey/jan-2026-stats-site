@@ -25,7 +25,8 @@ body {
 }
 
 button,
-input {
+input,
+select {
   font: inherit;
 }
 
@@ -167,6 +168,38 @@ input {
   margin: 5px 0 0;
   color: var(--muted);
   font-size: 0.78rem;
+}
+
+.official-actions {
+  display: flex;
+  align-items: flex-end;
+  justify-content: flex-end;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.month-select {
+  display: grid;
+  gap: 5px;
+  color: var(--muted);
+  font-size: 0.72rem;
+  font-weight: 700;
+}
+
+.month-select select {
+  min-width: 156px;
+  height: 34px;
+  border: 1px solid #c9d5e7;
+  border-radius: 8px;
+  background: #fff;
+  color: var(--blue-900);
+  padding: 0 34px 0 10px;
+  outline: none;
+}
+
+.month-select select:focus {
+  border-color: var(--blue-700);
+  box-shadow: 0 0 0 3px rgba(26, 110, 189, 0.12);
 }
 
 .source-link {
@@ -634,6 +667,10 @@ footer {
     align-items: stretch;
   }
 
+  .official-actions {
+    justify-content: flex-start;
+  }
+
   .official-grid {
     grid-template-columns: 1fr;
   }
@@ -677,6 +714,17 @@ footer {
   .official-ranking {
     padding-left: 14px;
     padding-right: 14px;
+  }
+
+  .official-actions,
+  .month-select,
+  .month-select select,
+  .source-link {
+    width: 100%;
+  }
+
+  .source-link {
+    justify-content: center;
   }
 
   .legend {
