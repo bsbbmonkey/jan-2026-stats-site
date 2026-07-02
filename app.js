@@ -1,9 +1,10 @@
 const DATA = window.JAN_STATS_DATA;
-const OFFICIAL = window.OFFICIAL_APRIL_DATA;
+const OFFICIAL = window.OFFICIAL_MONTHLY_DATA || window.OFFICIAL_APRIL_DATA;
 
 const state = {
   chart: "overview",
   officialChart: "categories",
+  officialMonthIndex: null,
   sheet: null,
   query: "",
 };
@@ -16,8 +17,8 @@ const chartDefs = [
 ];
 
 const officialChartDefs = [
-  { id: "categories", label: "4月品項比較" },
-  { id: "trend", label: "2026趨勢" },
+  { id: "categories", label: "品項比較" },
+  { id: "trend", label: "13月趨勢" },
   { id: "parts", label: "零件排行" },
 ];
 
@@ -80,10 +81,11 @@ function deltaClass(value) {
 }
 
 function renderHeader() {
-  const officialText = OFFICIAL ? `｜官方${OFFICIAL.period}資料已更新` : "";
+  const period = OFFICIAL ? officialDate() : "";
+  const officialText = period ? `｜官方${period}資料已更新` : "";
   qs("#sourceBadge").textContent = `${DATA.sourceFile}｜${DATA.period}${officialText}｜資料來源：${DATA.sourceNote}`;
   qs("#footerSource").textContent = OFFICIAL
-    ? `資料來源：${DATA.sourceNote}；${OFFICIAL.sourceName}（${OFFICIAL.period}）`
+    ? `資料來源：${DATA.sourceNote}；${OFFICIAL.sourceName}（${OFFICIAL.seriesPeriod || period}）`
     : `資料來源：${DATA.sourceNote}｜由 Excel 正本資料生成`;
 }
 
@@ -385,8 +387,60 @@ function officialColor(id, index = 0) {
   return colors[id] || fallback[index % fallback.length];
 }
 
-function officialCategoryItems() {
-  return (OFFICIAL?.categories || []).map((item, index) => ({ ...item, color: officialColor(item.id, index) }));
+function officialDefaultIndex() {
+  if (!OFFICIAL?.dates?.length) return 0;
+  if (Number.isInteger(OFFICIAL.targetIndex)) return OFFICIAL.targetIndex;
+  return OFFICIAL.dates.length - 1;
+}
+
+function officialIndex() {
+  const max = Math.max((OFFICIAL?.dates?.length || 1) - 1, 0);
+  const index = Number.isInteger(state.officialMonthIndex) ? state.officialMonthIndex : officialDefaultIndex();
+  return Math.min(Math.max(index, 0), max);
+}
+
+function officialDate(index = officialIndex()) {
+  return OFFICIAL?.dates?.[index] || OFFICIAL?.period || "";
+}
+
+function shortOfficialDate(date) {
+  const text = String(date || "");
+  return text.replace("年", "/").replace("月", "");
+}
+
+function officialMetric(item, index = officialIndex()) {
+  const millionUsd = item?.series?.[index] ?? item?.aprilMillionUsd ?? 0;
+  const yoyPercent = item?.yoySeries?.[index] ?? item?.yoyPercent ?? null;
+  return {
+    ...item,
+    millionUsd,
+    usd: Math.round(Number(millionUsd || 0) * 1_000_000),
+    yoyPercent,
+  };
+}
+
+function officialCategoryItems(index = officialIndex()) {
+  return (OFFICIAL?.categories || []).map((item, itemIndex) => ({
+    ...officialMetric(item, index),
+    color: officialColor(item.id, itemIndex),
+  }));
+}
+
+function officialCardItems(index = officialIndex()) {
+  return [
+    { ...officialMetric(OFFICIAL.trackedTotal, index), color: officialColor("trackedTotal") },
+    ...officialCategoryItems(index),
+  ];
+}
+
+function officialPartItems(index = officialIndex()) {
+  const records = (OFFICIAL?.records || OFFICIAL?.topParts || []).filter((item) => {
+    if (item.group) return item.group === "零件";
+    return Array.isArray(item.series) || item.aprilMillionUsd != null;
+  });
+  return records
+    .map((item) => officialMetric(item, index))
+    .sort((a, b) => (b.millionUsd || 0) - (a.millionUsd || 0));
 }
 
 function renderOfficialSection() {
@@ -396,8 +450,11 @@ function renderOfficialSection() {
     return;
   }
 
-  qs("#officialMeta").textContent = `${OFFICIAL.sourceName}｜${OFFICIAL.period}｜單位：${OFFICIAL.unit}`;
+  const period = officialDate();
+  qs("#officialTitle").textContent = `官方 ${period}出口資料`;
+  qs("#officialMeta").textContent = `${OFFICIAL.sourceName}｜${OFFICIAL.seriesPeriod || period}｜目前顯示 ${period}｜單位：${OFFICIAL.unit}`;
   qs("#officialSourceLink").href = OFFICIAL.requestedPageUrl || OFFICIAL.sourceUrl;
+  renderOfficialMonthSelect();
   renderOfficialStats();
   renderOfficialChartTabs();
   renderOfficialChart();
@@ -405,15 +462,31 @@ function renderOfficialSection() {
   renderOfficialNote();
 }
 
+function renderOfficialMonthSelect() {
+  const select = qs("#officialMonthSelect");
+  if (!select) return;
+  const currentIndex = officialIndex();
+  select.replaceChildren();
+  (OFFICIAL.dates || []).forEach((date, index) => {
+    select.append(create("option", { value: String(index) }, date));
+  });
+  select.value = String(currentIndex);
+  select.onchange = (event) => {
+    state.officialMonthIndex = Number(event.target.value);
+    renderHeader();
+    renderOfficialSection();
+  };
+}
+
 function renderOfficialStats() {
   const grid = qs("#officialStats");
   grid.replaceChildren();
-  const cards = [OFFICIAL.trackedTotal, ...officialCategoryItems()];
+  const cards = officialCardItems();
 
   cards.forEach((item) => {
     const card = create("article", { className: "official-stat" });
     card.append(create("div", { className: "lbl" }, item.label));
-    card.append(create("div", { className: "val" }, formatOfficialCurrency(item.aprilMillionUsd)));
+    card.append(create("div", { className: "val" }, formatOfficialCurrency(item.millionUsd)));
     const sub = item.subset
       ? `整車子項｜YoY ${formatOfficialPercent(item.yoyPercent)}`
       : `YoY ${formatOfficialPercent(item.yoyPercent)}`;
@@ -442,24 +515,25 @@ function renderOfficialChartTabs() {
 function renderOfficialChart() {
   if (!OFFICIAL) return;
   const svg = qs("#officialChart");
+  const period = officialDate();
   svg.replaceChildren();
   svg.setAttribute("preserveAspectRatio", "none");
 
   if (state.officialChart === "trend") {
-    qs("#officialChartTitle").textContent = "2026 年 1-5 月出口趨勢";
-    qs("#officialChartSubtitle").textContent = "官方 13 個月序列節錄｜單位：百萬美元";
+    qs("#officialChartTitle").textContent = "官方出口 13 個月趨勢";
+    qs("#officialChartSubtitle").textContent = `${OFFICIAL.seriesPeriod}｜目前標示 ${period}｜單位：百萬美元`;
     renderOfficialTrendChart(svg);
     return;
   }
 
   if (state.officialChart === "parts") {
-    qs("#officialChartTitle").textContent = "官方 4 月主要零件出口排行";
-    qs("#officialChartSubtitle").textContent = "依 2026 年 4 月出口金額排序｜單位：百萬美元";
+    qs("#officialChartTitle").textContent = `官方 ${period}主要零件出口排行`;
+    qs("#officialChartSubtitle").textContent = `依 ${period}出口金額排序｜單位：百萬美元`;
     renderOfficialPartsChart(svg);
     return;
   }
 
-  qs("#officialChartTitle").textContent = "官方 4 月出口品項比較";
+  qs("#officialChartTitle").textContent = `官方 ${period}出口品項比較`;
   qs("#officialChartSubtitle").textContent = "整車類、電輔車、折疊車與主要零件｜單位：百萬美元";
   renderOfficialCategoryChart(svg);
 }
@@ -472,7 +546,7 @@ function renderOfficialCategoryChart(svg) {
   const plotW = width - margin.left - margin.right;
   const plotH = height - margin.top - margin.bottom;
   const plotBottom = margin.top + plotH;
-  const maxValue = niceMax(Math.max(...items.map((item) => item.aprilMillionUsd || 0), 1));
+  const maxValue = niceMax(Math.max(...items.map((item) => item.millionUsd || 0), 1));
   const slot = plotW / Math.max(items.length, 1);
   const barWidth = Math.min(118, slot * 0.48);
 
@@ -481,7 +555,7 @@ function renderOfficialCategoryChart(svg) {
 
   items.forEach((item, index) => {
     const xCenter = margin.left + slot * index + slot / 2;
-    const value = item.aprilMillionUsd || 0;
+    const value = item.millionUsd || 0;
     const barHeight = (value / maxValue) * plotH;
     const x = xCenter - barWidth / 2;
     const y = plotBottom - barHeight;
@@ -489,7 +563,7 @@ function renderOfficialCategoryChart(svg) {
 
     const bar = svgEl("rect", { x, y, width: barWidth, height: Math.max(1, barHeight), rx: 4, fill: color, opacity: "0.88" });
     bar.append(svgEl("title"));
-    bar.querySelector("title").textContent = `${item.label}：${formatOfficialCurrency(value)}，YoY ${formatOfficialPercent(item.yoyPercent)}`;
+    bar.querySelector("title").textContent = `${item.label} ${officialDate()}：${formatOfficialCurrency(value)}，YoY ${formatOfficialPercent(item.yoyPercent)}`;
     svg.append(bar);
 
     const amount = svgEl("text", { x: xCenter, y: Math.max(margin.top + 14, y - 10), "text-anchor": "middle", class: "bar-label", fill: color });
@@ -542,22 +616,36 @@ function renderOfficialTrendChart(svg) {
   const plotH = height - margin.top - margin.bottom;
   const plotBottom = margin.top + plotH;
   const seriesItems = officialCategoryItems().filter((item) => ["completeBike", "ebike", "parts"].includes(item.id));
-  const focus = OFFICIAL.focusIndexes;
-  const maxValue = niceMax(Math.max(...seriesItems.flatMap((item) => focus.map((idx) => item.series[idx] || 0)), 1));
-  const count = OFFICIAL.focusDates.length;
+  const indexes = (OFFICIAL.dates || []).map((_, index) => index);
+  const selectedIndex = officialIndex();
+  const maxValue = niceMax(Math.max(...seriesItems.flatMap((item) => indexes.map((idx) => item.series[idx] || 0)), 1));
+  const count = indexes.length;
 
   svg.setAttribute("viewBox", `0 0 ${width} ${height}`);
   drawOfficialGrid(svg, width, margin, plotH, maxValue);
 
-  OFFICIAL.focusDates.forEach((date, index) => {
+  const selectedX = margin.left + (plotW * selectedIndex) / Math.max(count - 1, 1);
+  svg.append(svgEl("line", {
+    x1: selectedX,
+    x2: selectedX,
+    y1: margin.top,
+    y2: plotBottom,
+    stroke: "#9fb1c6",
+    "stroke-width": 1.4,
+    "stroke-dasharray": "5 5",
+  }));
+
+  (OFFICIAL.dates || []).forEach((date, index) => {
     const x = margin.left + (plotW * index) / Math.max(count - 1, 1);
     const label = svgEl("text", { x, y: plotBottom + 28, "text-anchor": "middle", class: "x-label" });
-    label.textContent = date.replace("2026年", "");
+    label.textContent = index === 0 || index === selectedIndex || index === count - 1 || index % 2 === 0
+      ? shortOfficialDate(date)
+      : "";
     svg.append(label);
   });
 
   seriesItems.forEach((item) => {
-    const points = focus.map((idx, index) => {
+    const points = indexes.map((idx, index) => {
       const value = item.series[idx] || 0;
       return {
         x: margin.left + (plotW * index) / Math.max(count - 1, 1),
@@ -576,9 +664,17 @@ function renderOfficialTrendChart(svg) {
     }));
 
     points.forEach((pt, index) => {
-      const dot = svgEl("circle", { cx: pt.x, cy: pt.y, r: 4.6, fill: item.color, stroke: "#fff", "stroke-width": 1.5 });
+      const isSelected = index === selectedIndex;
+      const dot = svgEl("circle", {
+        cx: pt.x,
+        cy: pt.y,
+        r: isSelected ? 6.3 : 3.9,
+        fill: item.color,
+        stroke: "#fff",
+        "stroke-width": isSelected ? 2.2 : 1.5,
+      });
       dot.append(svgEl("title"));
-      dot.querySelector("title").textContent = `${item.label} ${OFFICIAL.focusDates[index]}：${formatOfficialCurrency(pt.value)}`;
+      dot.querySelector("title").textContent = `${item.label} ${OFFICIAL.dates[index]}：${formatOfficialCurrency(pt.value)}`;
       svg.append(dot);
     });
 
@@ -592,18 +688,18 @@ function renderOfficialTrendChart(svg) {
 }
 
 function renderOfficialPartsChart(svg) {
-  const items = (OFFICIAL.topParts || []).slice(0, 10);
+  const items = officialPartItems().slice(0, 10);
   const width = 1120;
   const rowH = 42;
   const height = 86 + items.length * rowH;
   const margin = { top: 28, right: 120, bottom: 30, left: 260 };
   const plotW = width - margin.left - margin.right;
-  const maxValue = Math.max(...items.map((item) => item.aprilMillionUsd || 0), 1);
+  const maxValue = Math.max(...items.map((item) => item.millionUsd || 0), 1);
 
   svg.setAttribute("viewBox", `0 0 ${width} ${height}`);
   items.forEach((item, index) => {
     const y = margin.top + index * rowH;
-    const barW = ((item.aprilMillionUsd || 0) / maxValue) * plotW;
+    const barW = ((item.millionUsd || 0) / maxValue) * plotW;
     const color = index < 3 ? "#1a6ebd" : "#58a5bf";
 
     const rank = svgEl("text", { x: 22, y: y + 24, class: "tick-label" });
@@ -620,11 +716,11 @@ function renderOfficialPartsChart(svg) {
 
     const bar = svgEl("rect", { x: margin.left, y: y + 8, width: Math.max(1, barW), height: 22, rx: 4, fill: color, opacity: "0.86" });
     bar.append(svgEl("title"));
-    bar.querySelector("title").textContent = `${item.officialName}：${formatOfficialCurrency(item.aprilMillionUsd)}，YoY ${formatOfficialPercent(item.yoyPercent)}`;
+    bar.querySelector("title").textContent = `${item.officialName} ${officialDate()}：${formatOfficialCurrency(item.millionUsd)}，YoY ${formatOfficialPercent(item.yoyPercent)}`;
     svg.append(bar);
 
     const value = svgEl("text", { x: margin.left + barW + 10, y: y + 24, class: "bar-label", fill: "#1a3a6e" });
-    value.textContent = formatOfficialCurrency(item.aprilMillionUsd);
+    value.textContent = formatOfficialCurrency(item.millionUsd);
     svg.append(value);
 
     const yoy = svgEl("text", { x: width - 28, y: y + 24, "text-anchor": "end", class: `svg-yoy ${deltaClass(item.yoyPercent)}` });
@@ -653,6 +749,7 @@ function renderOfficialLegend(items) {
 function renderOfficialRanking() {
   const table = qs("#officialRankingTable");
   table.replaceChildren();
+  qs("#officialRankingMeta").textContent = `依 ${officialDate()}出口金額排序`;
   const head = create("thead");
   const headRow = create("tr");
   ["品項", "金額", "YoY"].forEach((label) => headRow.append(create("th", {}, label)));
@@ -660,13 +757,13 @@ function renderOfficialRanking() {
   table.append(head);
 
   const body = create("tbody");
-  (OFFICIAL.topParts || []).forEach((item) => {
+  officialPartItems().slice(0, 12).forEach((item) => {
     const row = create("tr");
     const name = create("td");
     name.append(create("strong", {}, item.label));
     name.append(create("span", {}, item.code));
     row.append(name);
-    row.append(create("td", { className: "num" }, formatOfficialCurrency(item.aprilMillionUsd)));
+    row.append(create("td", { className: "num" }, formatOfficialCurrency(item.millionUsd)));
     row.append(create("td", { className: `num ${deltaClass(item.yoyPercent)}` }, formatOfficialPercent(item.yoyPercent)));
     body.append(row);
   });
@@ -674,14 +771,15 @@ function renderOfficialRanking() {
 }
 
 function renderOfficialNote() {
-  const bike = OFFICIAL.categories.find((item) => item.id === "completeBike");
-  const ebike = OFFICIAL.categories.find((item) => item.id === "ebike");
-  const parts = OFFICIAL.categories.find((item) => item.id === "parts");
+  const items = officialCategoryItems();
+  const bike = items.find((item) => item.id === "completeBike");
+  const ebike = items.find((item) => item.id === "ebike");
+  const parts = items.find((item) => item.id === "parts");
   qs("#officialNote").innerHTML = [
-    "<strong>官方4月重點：</strong>",
-    `整車類出口 ${formatOfficialCurrency(bike?.aprilMillionUsd)}，YoY ${formatOfficialPercent(bike?.yoyPercent)}；`,
-    `電輔車出口 ${formatOfficialCurrency(ebike?.aprilMillionUsd)}，YoY ${formatOfficialPercent(ebike?.yoyPercent)}；`,
-    `主要零件出口 ${formatOfficialCurrency(parts?.aprilMillionUsd)}，YoY ${formatOfficialPercent(parts?.yoyPercent)}。`,
+    `<strong>官方${officialDate()}重點：</strong>`,
+    `整車類出口 ${formatOfficialCurrency(bike?.millionUsd)}，YoY ${formatOfficialPercent(bike?.yoyPercent)}；`,
+    `電輔車出口 ${formatOfficialCurrency(ebike?.millionUsd)}，YoY ${formatOfficialPercent(ebike?.yoyPercent)}；`,
+    `主要零件出口 ${formatOfficialCurrency(parts?.millionUsd)}，YoY ${formatOfficialPercent(parts?.yoyPercent)}。`,
     "折疊車為 87120010 旗下子項，僅作單獨觀察，未重複加計於追蹤品項合計。",
     OFFICIAL.sourceNote
   ].join(" ");
@@ -787,6 +885,7 @@ function bindEvents() {
 function boot() {
   if (!DATA) return;
   state.sheet = visibleSheets()[0]?.name || null;
+  if (OFFICIAL) state.officialMonthIndex = officialDefaultIndex();
   renderHeader();
   renderStats();
   renderOfficialSection();
