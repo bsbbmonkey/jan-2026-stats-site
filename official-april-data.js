@@ -1,10 +1,10 @@
-window.OFFICIAL_APRIL_DATA = {
+window.OFFICIAL_MONTHLY_DATA = window.OFFICIAL_APRIL_DATA = {
   "sourceName": "經濟部國際貿易署 中華民國進出口貿易統計",
   "sourceUrl": "https://publicinfo.trade.gov.tw/cuswebo/FSC3000C/Visualization?Chart=FSC6040I",
   "requestedPageUrl": "https://publicinfo.trade.gov.tw/cuswebo/FSC3000C?table=FSC3210F",
   "sourceEndpoint": "/cuswebo/FSC6040I/getData",
-  "sourceNote": "官方視覺化圖表端點「出口主要貨品比較」；原 FSC3210F 詳細查詢頁含驗證碼，本次未繞過驗證碼。",
-  "period": "2026年04月",
+  "sourceNote": "官方視覺化圖表端點「出口主要貨品比較」；已校驗 27 個追蹤品項近 13 個月資料。原 FSC3210F 詳細查詢頁含驗證碼，本次未繞過驗證碼。",
+  "period": "2026年05月",
   "seriesPeriod": "2025年05月 - 2026年05月",
   "fetchedDate": "2026-07-02",
   "unit": "百萬美元",
@@ -23,7 +23,7 @@ window.OFFICIAL_APRIL_DATA = {
     "2026年04月",
     "2026年05月"
   ],
-  "targetIndex": 11,
+  "targetIndex": 12,
   "focusDates": [
     "2026年01月",
     "2026年02月",
