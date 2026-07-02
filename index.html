@@ -13,7 +13,7 @@
     <header class="hero">
       <div class="hero-inner">
         <p class="eyebrow">Taiwan Bicycle Industry Statistics</p>
-        <h1>2026年1月正本統計與官方4月資料</h1>
+        <h1>2026年1月正本統計與官方月資料</h1>
         <p class="subtitle">台灣自行車整車、電輔車、折疊車與主要零件出口資料整理</p>
         <span class="badge" id="sourceBadge">讀取資料中</span>
       </div>
@@ -25,30 +25,36 @@
       <section class="official-panel" id="officialPanel" aria-labelledby="officialTitle">
         <div class="official-head">
           <div>
-            <p class="section-kicker">Official April Update</p>
-            <h2 id="officialTitle">官方 2026 年 4 月出口資料</h2>
+            <p class="section-kicker">Official Monthly Update</p>
+            <h2 id="officialTitle">官方出口月資料</h2>
             <p id="officialMeta">讀取官方資料中</p>
           </div>
-          <a id="officialSourceLink" class="source-link" href="#" target="_blank" rel="noreferrer">官方資料來源</a>
+          <div class="official-actions">
+            <label class="month-select">
+              <span>顯示月份</span>
+              <select id="officialMonthSelect" aria-label="選擇官方資料月份"></select>
+            </label>
+            <a id="officialSourceLink" class="source-link" href="#" target="_blank" rel="noreferrer">官方資料來源</a>
+          </div>
         </div>
-        <div class="official-stats" id="officialStats" aria-label="官方4月重點統計"></div>
+        <div class="official-stats" id="officialStats" aria-label="官方月份重點統計"></div>
         <div class="official-grid">
           <article class="official-chart-card">
             <div class="chart-head chart-head-compact">
               <div>
-                <h2 id="officialChartTitle">官方 4 月品項比較</h2>
+                <h2 id="officialChartTitle">官方品項比較</h2>
                 <p id="officialChartSubtitle">單位：百萬美元</p>
               </div>
               <div class="chart-tabs" id="officialChartTabs" aria-label="官方圖表切換"></div>
             </div>
             <div class="official-chart-area">
-              <svg id="officialChart" role="img" aria-label="官方4月統計圖表"></svg>
+              <svg id="officialChart" role="img" aria-label="官方月份統計圖表"></svg>
             </div>
             <div class="legend" id="officialLegend"></div>
           </article>
           <aside class="official-ranking" aria-labelledby="officialRankingTitle">
             <h3 id="officialRankingTitle">主要零件 TOP 12</h3>
-            <p>依 2026 年 4 月出口金額排序</p>
+            <p id="officialRankingMeta">依所選月份出口金額排序</p>
             <div class="mini-table-wrap">
               <table id="officialRankingTable"></table>
             </div>
