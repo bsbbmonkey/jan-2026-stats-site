@@ -1,0 +1,98 @@
+<!doctype html>
+<html lang="zh-Hant">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>2026年1月正本統計｜台灣自行車產業</title>
+    <link rel="stylesheet" href="./styles.css" />
+    <script src="./data.js" defer></script>
+    <script src="./official-april-data.js" defer></script>
+    <script src="./app.js" defer></script>
+  </head>
+  <body>
+    <header class="hero">
+      <div class="hero-inner">
+        <p class="eyebrow">Taiwan Bicycle Industry Statistics</p>
+        <h1>2026年1月正本統計與官方4月資料</h1>
+        <p class="subtitle">台灣自行車整車、電輔車、折疊車與主要零件出口資料整理</p>
+        <span class="badge" id="sourceBadge">讀取資料中</span>
+      </div>
+    </header>
+
+    <main class="wrap">
+      <section class="stats" id="statsGrid" aria-label="重點統計"></section>
+
+      <section class="official-panel" id="officialPanel" aria-labelledby="officialTitle">
+        <div class="official-head">
+          <div>
+            <p class="section-kicker">Official April Update</p>
+            <h2 id="officialTitle">官方 2026 年 4 月出口資料</h2>
+            <p id="officialMeta">讀取官方資料中</p>
+          </div>
+          <a id="officialSourceLink" class="source-link" href="#" target="_blank" rel="noreferrer">官方資料來源</a>
+        </div>
+        <div class="official-stats" id="officialStats" aria-label="官方4月重點統計"></div>
+        <div class="official-grid">
+          <article class="official-chart-card">
+            <div class="chart-head chart-head-compact">
+              <div>
+                <h2 id="officialChartTitle">官方 4 月品項比較</h2>
+                <p id="officialChartSubtitle">單位：百萬美元</p>
+              </div>
+              <div class="chart-tabs" id="officialChartTabs" aria-label="官方圖表切換"></div>
+            </div>
+            <div class="official-chart-area">
+              <svg id="officialChart" role="img" aria-label="官方4月統計圖表"></svg>
+            </div>
+            <div class="legend" id="officialLegend"></div>
+          </article>
+          <aside class="official-ranking" aria-labelledby="officialRankingTitle">
+            <h3 id="officialRankingTitle">主要零件 TOP 12</h3>
+            <p>依 2026 年 4 月出口金額排序</p>
+            <div class="mini-table-wrap">
+              <table id="officialRankingTable"></table>
+            </div>
+          </aside>
+        </div>
+        <p class="official-note" id="officialNote"></p>
+      </section>
+
+      <section class="chart-card" aria-labelledby="chartTitle">
+        <div class="chart-head">
+          <div>
+            <h2 id="chartTitle">主要品項出口金額</h2>
+            <p id="chartSubtitle">單位：US$｜以 Excel 正本快取值產生</p>
+          </div>
+          <div class="chart-tabs" id="chartTabs" aria-label="圖表切換"></div>
+        </div>
+        <div class="chart-area">
+          <svg id="mainChart" role="img" aria-label="主要統計圖表"></svg>
+        </div>
+        <div class="legend" id="chartLegend"></div>
+      </section>
+
+      <section class="note" id="summaryNote"></section>
+
+      <section class="table-panel" aria-labelledby="sheetTitle">
+        <div class="table-toolbar">
+          <div>
+            <h2 id="sheetTitle">原始工作表</h2>
+            <p id="sheetMeta">讀取工作表中</p>
+          </div>
+          <label class="search-box">
+            <span>搜尋</span>
+            <input id="sheetSearch" type="search" autocomplete="off" placeholder="國家、品項、金額" />
+          </label>
+        </div>
+        <div class="sheet-tabs" id="sheetTabs" aria-label="工作表切換"></div>
+        <div class="table-wrap">
+          <table id="dataTable"></table>
+        </div>
+      </section>
+    </main>
+
+    <footer>
+      <span id="footerSource">資料來源：Excel 正本統計</span>
+    </footer>
+  </body>
+</html>
